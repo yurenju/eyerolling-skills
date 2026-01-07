@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a specification-driven development workflow command set designed for Claude Code and other AI assistants. The project provides a structured three-step methodology: from requirement clarification to complete implementation, ensuring the development process is clear and traceable through PRD (Product Requirements Document) driven development.
+Eye-Rolling Workflow is a specification-driven development workflow command set designed for Claude Code and other AI assistants. The name is self-deprecating — from an outsider's perspective, the back-and-forth clarification process with AI can seem annoyingly thorough. But that's the point: think it through before you code.
+
+The project provides a structured three-step methodology: from requirement clarification to complete implementation, ensuring the development process is clear and traceable through PRD (Product Requirements Document) driven development.
 
 The core value lies in ensuring every feature goes through thorough requirement analysis, has clear implementation plans, and maintains a trackable, interruptible, and resumable execution process.
 

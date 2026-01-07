@@ -1,6 +1,8 @@
-# Claude Code Config - 規格導向開發流程
+# Eye-Rolling Workflow（翻白眼工作流）
 
 一套專注於規格導向開發的 Claude Code 工作流程命令集，透過結構化的三步驟流程，從需求澄清到完整實作，確保開發過程清晰可追蹤。
+
+這個名稱帶有自嘲意味——從旁觀者的角度來看，與 AI 來回釐清需求的過程可能顯得煩人到讓人翻白眼。但這正是重點：寫程式之前先想清楚。
 
 ![claude-code-config](assets/claude-code-config-intro.png)
 
@@ -135,7 +137,7 @@ npm run install-config -- overwrite
 ## 🏗️ 專案架構
 
 ```
-claude-code-config/
+eye-rolling-workflow/
 ├── commands/                   # 核心命令
 │   ├── create-prd.md          # PRD 生成流程
 │   ├── create-impl-plan.md    # 實作計畫流程  
