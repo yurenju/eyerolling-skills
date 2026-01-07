@@ -1,12 +1,3 @@
----
-name: create-prd
-description: |
-  Generate Product Requirements Document (PRD) through interactive Q&A.
-  Use when: clarifying feature requirements, defining user stories, establishing acceptance criteria, starting a new feature.
-  Keywords: PRD, product requirements, requirements document, feature requirements, user stories, acceptance criteria.
-  This is the first step of the spec-driven development workflow (or second if research was done first).
----
-
 # 產生產品需求文件 (PRD)
 
 ## 目標
@@ -117,7 +108,3 @@ PRD 應使用與使用者對話中相同的語言撰寫：
 2. 確保詢問使用者澄清問題
 3. 納入使用者對澄清問題的回答以完善 PRD
 4. 讓 PRD 的語言與使用者的對話語言相符
-
-## 範例
-
-完整的 PRD 範例請參考：[examples/migrate-to-skills-prd.md](examples/migrate-to-skills-prd.md)

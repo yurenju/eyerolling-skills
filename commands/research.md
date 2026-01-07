@@ -1,12 +1,3 @@
----
-name: research
-description: |
-  Research and analysis skill for in-depth technical investigation.
-  Use when: analyzing technical problems, exploring solutions, investigating issues, comparing technologies, understanding root causes.
-  Keywords: research, analyze, investigate, technical problem, comparison, evaluation, deep dive, root cause analysis.
-  This is the optional first step of the spec-driven development workflow, before create-prd.
----
-
 # 研究與分析
 
 ## 目標
@@ -125,7 +116,7 @@ description: |
 
 然後用條列總結評估：
 - **實作複雜度：** [評估] - [具體原因]
-- **維護影響：** [評估] - [長期考量]
+- **維護影響：** [評估] - [長期考量]  
 - **風險等級：** [評估] - [主要風險點]
 
 ### 6. 建議與決策指引
@@ -223,7 +214,3 @@ description: |
 - **邏輯順序：** 內容組織符合邏輯順序
 - **簡潔實用：** 聚焦關鍵資訊，指向具體行動
 - **結構平衡：** 適當平衡敘述與條列的使用
-
-## 範例
-
-完整的研究報告範例請參考：[examples/skills-vs-slash-commands.md](examples/skills-vs-slash-commands.md)

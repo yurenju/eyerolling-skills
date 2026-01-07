@@ -1,29 +1,20 @@
 const shell = require('shelljs');
 const path = require('path');
 const os = require('os');
-const fs = require('fs');
 
-// Skill names that will be installed (used for old commands cleanup)
-const SKILL_NAMES = ['research', 'create-prd', 'create-impl-plan', 'process-task-list', 'acceptance-test'];
-
-/**
- * Check if skill directories already exist in target location
- */
-function checkSkillConflicts(skillDirs, targetDir) {
+// Common utility functions for installation
+function checkFileConflicts(files, targetDir) {
   const conflicts = [];
-  skillDirs.forEach(skillPath => {
-    const skillName = path.basename(skillPath);
-    const targetPath = path.join(targetDir, skillName);
-    if (shell.test('-d', targetPath)) {
-      conflicts.push(skillName);
+  files.forEach(file => {
+    const filename = path.basename(file);
+    const targetPath = path.join(targetDir, filename);
+    if (shell.test('-f', targetPath)) {
+      conflicts.push(filename);
     }
   });
   return conflicts;
 }
 
-/**
- * Create target directory if it doesn't exist
- */
 function createTargetDirectory(targetDir) {
   if (!shell.test('-d', targetDir)) {
     console.log(`📁 Creating directory: ${targetDir}`);
@@ -34,205 +25,164 @@ function createTargetDirectory(targetDir) {
   }
 }
 
-/**
- * Copy skill directories recursively
- */
-function copySkillDirectories(skillDirs, targetDir) {
-  console.log('📋 Copying skills...');
+function copyFilesWithLogging(files, targetDir) {
+  console.log('📋 Copying files...');
   let successCount = 0;
   let errorCount = 0;
-
-  skillDirs.forEach(skillPath => {
-    const skillName = path.basename(skillPath);
-    const targetPath = path.join(targetDir, skillName);
-    console.log(`  Copying ${skillName}/...`);
-
-    // Remove existing directory if it exists (for overwrite mode)
-    if (shell.test('-d', targetPath)) {
-      shell.rm('-rf', targetPath);
-    }
-
-    // Copy entire directory recursively
-    shell.cp('-r', skillPath, targetDir);
+  
+  files.forEach(file => {
+    const filename = path.basename(file);
+    console.log(`  Copying ${filename}...`);
+    
+    shell.cp(file, targetDir);
     if (shell.error()) {
-      console.error(`  ❌ Error: Failed to copy ${skillName}`);
+      console.error(`  ❌ Error: Failed to copy ${filename}`);
       errorCount++;
     } else {
-      console.log(`  ✅ Copied ${skillName}/`);
+      console.log(`  ✅ Copied ${filename}`);
       successCount++;
     }
   });
-
+  
   return { successCount, errorCount };
 }
 
-/**
- * Clean up old commands that have been migrated to skills
- */
-function cleanupOldCommands() {
-  const commandsDir = path.join(os.homedir(), '.claude', 'commands');
-  const cleanedFiles = [];
-
-  if (!shell.test('-d', commandsDir)) {
-    return cleanedFiles;
+function installDirectoryFiles(sourcePattern, targetDirName, directoryLabel) {
+  const targetDir = path.join(os.homedir(), '.claude', targetDirName);
+  console.log(`Target directory: ${targetDir}`);
+  
+  // Get list of .md files to install
+  const files = shell.ls(sourcePattern);
+  if (files.code !== 0) {
+    return {
+      success: false,
+      error: `${directoryLabel} directory not found or no .md files available`,
+      targetDir,
+      files: [],
+      conflicts: [],
+      successCount: 0,
+      errorCount: 0
+    };
   }
-
-  console.log('🧹 Checking for old commands to clean up...');
-
-  SKILL_NAMES.forEach(skillName => {
-    const commandFile = path.join(commandsDir, `${skillName}.md`);
-    if (shell.test('-f', commandFile)) {
-      shell.rm(commandFile);
-      if (!shell.error()) {
-        console.log(`  🗑️  Removed old command: ${skillName}.md`);
-        cleanedFiles.push(`${skillName}.md`);
-      }
-    }
-  });
-
-  // Also check for acceptance-tester (old agent name)
-  const oldAgentCommand = path.join(commandsDir, 'acceptance-tester.md');
-  if (shell.test('-f', oldAgentCommand)) {
-    shell.rm(oldAgentCommand);
-    if (!shell.error()) {
-      console.log(`  🗑️  Removed old command: acceptance-tester.md`);
-      cleanedFiles.push('acceptance-tester.md');
-    }
-  }
-
-  return cleanedFiles;
+  
+  console.log(`Found ${files.length} ${directoryLabel.toLowerCase()} files to install: ${files.map(f => path.basename(f)).join(', ')}`);
+  
+  // Check for conflicting files
+  const conflicts = checkFileConflicts(files, targetDir);
+  
+  return {
+    success: true,
+    targetDir,
+    files,
+    conflicts,
+    successCount: 0,
+    errorCount: 0
+  };
 }
 
-/**
- * Clean up old agents directory
- */
-function cleanupOldAgents() {
-  const agentsDir = path.join(os.homedir(), '.claude', 'agents');
-  const cleanedFiles = [];
-
-  if (!shell.test('-d', agentsDir)) {
-    return cleanedFiles;
-  }
-
-  console.log('🧹 Checking for old agents to clean up...');
-
-  // Check for acceptance-tester agent
-  const agentFile = path.join(agentsDir, 'acceptance-tester.md');
-  if (shell.test('-f', agentFile)) {
-    shell.rm(agentFile);
-    if (!shell.error()) {
-      console.log(`  🗑️  Removed old agent: acceptance-tester.md`);
-      cleanedFiles.push('acceptance-tester.md');
-    }
-  }
-
-  return cleanedFiles;
-}
-
-/**
- * Get list of skill directories to install
- */
-function getSkillDirectories() {
-  const skillsPattern = 'skills/*';
-  const dirs = shell.ls('-d', skillsPattern);
-
-  if (dirs.code !== 0 || dirs.length === 0) {
-    return { success: false, dirs: [] };
-  }
-
-  // Filter to only include directories that contain SKILL.md
-  const validDirs = dirs.filter(dir => {
-    const skillFile = path.join(dir, 'SKILL.md');
-    return shell.test('-f', skillFile);
-  });
-
-  return { success: true, dirs: validDirs };
-}
-
-/**
- * Main installation function
- */
 function installConfig() {
   try {
     // Check for overwrite flag
     const hasOverwriteFlag = process.argv.includes('overwrite');
-
-    console.log('📦 Starting Skills installation...');
+    
+    console.log('📦 Starting installation...');
     console.log(`Platform: ${process.platform}`);
     console.log(`Overwrite mode: ${hasOverwriteFlag ? 'enabled' : 'disabled'}`);
-    console.log('');
-
-    // Get skill directories
-    const { success, dirs: skillDirs } = getSkillDirectories();
-
-    if (!success || skillDirs.length === 0) {
-      throw new Error('No valid skill directories found in skills/');
+    
+    // Prepare installation for both directories
+    const commandsInfo = installDirectoryFiles('commands/*.md', 'commands', 'Commands');
+    const agentsInfo = installDirectoryFiles('agents/*.md', 'agents', 'Agents');
+    
+    // Check if any directory scan failed
+    if (!commandsInfo.success && !agentsInfo.success) {
+      throw new Error('Neither commands nor agents directory found');
     }
-
-    console.log(`Found ${skillDirs.length} skills to install: ${skillDirs.map(d => path.basename(d)).join(', ')}`);
-
-    const targetDir = path.join(os.homedir(), '.claude', 'skills');
-    console.log(`Target directory: ${targetDir}`);
-    console.log('');
-
-    // Check for conflicts
-    const conflicts = checkSkillConflicts(skillDirs, targetDir);
-
-    if (conflicts.length > 0 && !hasOverwriteFlag) {
-      console.log(`❌ Found existing skills: ${conflicts.join(', ')}`);
-      console.log('Use overwrite flag to overwrite existing skills:');
+    
+    // Collect all conflicts
+    const allConflicts = [];
+    if (commandsInfo.success && commandsInfo.conflicts.length > 0) {
+      allConflicts.push(...commandsInfo.conflicts.map(f => `commands/${f}`));
+    }
+    if (agentsInfo.success && agentsInfo.conflicts.length > 0) {
+      allConflicts.push(...agentsInfo.conflicts.map(f => `agents/${f}`));
+    }
+    
+    // If conflicts exist and no --overwrite flag, stop installation
+    if (allConflicts.length > 0 && !hasOverwriteFlag) {
+      console.log(`❌ Found existing files: ${allConflicts.join(', ')}`);
+      console.log('Use overwrite flag to overwrite existing files:');
       console.log('npm run install-config -- overwrite');
       process.exit(1);
     }
-
-    if (conflicts.length > 0) {
-      console.log(`⚠️  Will overwrite ${conflicts.length} existing skills: ${conflicts.join(', ')}`);
-      console.log('');
+    
+    if (allConflicts.length > 0) {
+      console.log(`⚠️  Will overwrite ${allConflicts.length} existing files: ${allConflicts.join(', ')}`);
     }
-
-    // Clean up old commands and agents first
-    const cleanedCommands = cleanupOldCommands();
-    const cleanedAgents = cleanupOldAgents();
-
-    if (cleanedCommands.length > 0 || cleanedAgents.length > 0) {
-      console.log('');
+    
+    let totalSuccessCount = 0;
+    let totalErrorCount = 0;
+    const installedFiles = [];
+    
+    // Install commands if available
+    if (commandsInfo.success) {
+      createTargetDirectory(commandsInfo.targetDir);
+      const result = copyFilesWithLogging(commandsInfo.files, commandsInfo.targetDir);
+      totalSuccessCount += result.successCount;
+      totalErrorCount += result.errorCount;
+      commandsInfo.files.forEach(file => installedFiles.push({ type: 'commands', filename: path.basename(file) }));
     }
-
-    // Create target directory and copy skills
-    createTargetDirectory(targetDir);
-    const { successCount, errorCount } = copySkillDirectories(skillDirs, targetDir);
-
+    
+    // Install agents if available
+    if (agentsInfo.success) {
+      createTargetDirectory(agentsInfo.targetDir);
+      const result = copyFilesWithLogging(agentsInfo.files, agentsInfo.targetDir);
+      totalSuccessCount += result.successCount;
+      totalErrorCount += result.errorCount;
+      agentsInfo.files.forEach(file => installedFiles.push({ type: 'agents', filename: path.basename(file) }));
+    }
+    
     // Final user feedback
     console.log('');
-    if (errorCount > 0) {
-      console.log(`⚠️  Installation completed with ${errorCount} errors out of ${successCount + errorCount} skills`);
+    if (totalErrorCount > 0) {
+      console.log(`⚠️  Installation completed with ${totalErrorCount} errors out of ${totalSuccessCount + totalErrorCount} files`);
       process.exit(1);
     } else {
-      console.log(`✅ Installation successful! Installed ${successCount} skills`);
-      if (conflicts.length > 0) {
-        console.log(`⚠️  Overwritten ${conflicts.length} existing skills`);
-      }
-      if (cleanedCommands.length > 0) {
-        console.log(`🧹 Cleaned up ${cleanedCommands.length} old commands`);
-      }
-      if (cleanedAgents.length > 0) {
-        console.log(`🧹 Cleaned up ${cleanedAgents.length} old agents`);
+      console.log(`✅ Installation successful! Installed ${totalSuccessCount} files`);
+      if (allConflicts.length > 0) {
+        console.log(`⚠️  Overwritten ${allConflicts.length} existing files`);
       }
     }
-
-    // Display installed skills
+    
+    // Display installed files by type
     console.log('');
-    console.log('📋 Installed skills:');
-    skillDirs.forEach(skillPath => {
-      const skillName = path.basename(skillPath);
-      console.log(`    • ${skillName}/`);
-    });
-
+    console.log('📋 Installed files:');
+    
+    const commandFiles = installedFiles.filter(f => f.type === 'commands');
+    const agentFiles = installedFiles.filter(f => f.type === 'agents');
+    
+    if (commandFiles.length > 0) {
+      console.log('  Commands:');
+      commandFiles.forEach(file => {
+        console.log(`    • ${file.filename}`);
+      });
+    }
+    
+    if (agentFiles.length > 0) {
+      console.log('  Agents:');
+      agentFiles.forEach(file => {
+        console.log(`    • ${file.filename}`);
+      });
+    }
+    
     console.log('');
-    console.log('🎉 You can now use these skills in Claude Code!');
-    console.log('   Invoke manually with /<skill-name> (e.g., /research, /create-prd)');
-    console.log('   Or let Claude automatically detect when to use them.');
-
+    if (commandFiles.length > 0 && agentFiles.length > 0) {
+      console.log('🎉 You can now use these commands and agents in Claude Code!');
+    } else if (commandFiles.length > 0) {
+      console.log('🎉 You can now use these commands in Claude Code!');
+    } else if (agentFiles.length > 0) {
+      console.log('🎉 You can now use these agents in Claude Code!');
+    }
+    
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exit(1);
@@ -246,11 +196,8 @@ if (require.main === module) {
 
 module.exports = {
   installConfig,
-  checkSkillConflicts,
+  checkFileConflicts,
   createTargetDirectory,
-  copySkillDirectories,
-  cleanupOldCommands,
-  cleanupOldAgents,
-  getSkillDirectories,
-  SKILL_NAMES
+  copyFilesWithLogging,
+  installDirectoryFiles
 };

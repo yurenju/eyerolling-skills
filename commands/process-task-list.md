@@ -1,11 +1,3 @@
----
-name: process-task-list
-description: |
-  Task list management and execution for spec-driven development.
-  Use when: executing implementation tasks, managing task progress, processing task list with git commits.
-  Keywords: task execution, process-task, implementation, commit, task management, 任務執行, 實作, 任務清單.
----
-
 # 任務清單管理
 
 用於在 Claude Code 中管理任務清單的指導原則，以追蹤完成 PRD 的進度
@@ -23,16 +15,11 @@ description: |
 
 ### 當前階段的輸入與輸出
 
-**輸入來源**（至少需要 PRD 或 Research 其中之一）：
-- **implementation.md**：任務清單和實作要點（必需）
-- **acceptance.feature**：驗收測試場景（必需）
-- **PRD 文件**：功能背景和商業需求（產品導向任務）
-- **Research 文件**：技術分析和解決方案（技術導向任務）
-
-**三種常見流程**：
-1. **Research + PRD**：完整流程，implementation.md 來自完整規劃
-2. **只有 PRD**：技術明確，implementation.md 直接從產品需求產出
-3. **只有 Research**：技術導向任務，implementation.md 從研究結論產出
+**輸入來源**：
+- Implementation.md（任務清單和實作要點）
+- PRD 文件（功能背景和商業需求）
+- acceptance.feature（驗收測試場景）
+- 【選用】Research 文件（如果 PRD 中有引用）
 
 **輸出目標**：
 - 實際的程式碼變更
@@ -46,16 +33,16 @@ description: |
 - 提供實作要點和技術指導
 - 提供「實作參考資訊」（來自 research 和 PRD 的技術細節）
 
-**acceptance.feature**：
-- 提供驗收測試的具體場景
-- 幫助理解功能的預期行為
-
-**prd.md**（產品導向任務）：
+**prd.md**：
 - 提供功能的商業背景和使用者價值
 - 幫助理解「為什麼」要這樣實作
 - 提供高層次的技術方向
 
-**research 文件**（技術導向任務）：
+**acceptance.feature**：
+- 提供驗收測試的具體場景
+- 幫助理解功能的預期行為
+
+**research 文件**（如果有）：
 - 提供問題分析和技術選型的背景
 - 提供已驗證的解決方案和最佳實踐
 - 補充深入的技術脈絡
@@ -126,7 +113,6 @@ Claude Code 提供內建的 TodoWrite 工具來管理任務，這與 Cursor 等�
        - 範例：`[後續依賴] 後續任務需注意必須先呼叫 initAuth() 才能使用其他 auth 函數`
 
   - **照預期完成時**：如果整個任務執行過程都按照任務敘述順利完成，沒有觸發上述任何情況，則標註「照預期開發」
-  - 詳細的實作備註品質指引，請參考[實作備註指引](references/implementation-notes-guide.md)
 
 - **完成協議：**
   1. 實作任務時，參考「任務細節」中的所有實作要點
@@ -170,11 +156,9 @@ Claude Code 提供內建的 TodoWrite 工具來管理任務，這與 Cursor 等�
 1. **首次載入任務：**
    - 讀取 `implementation.md` 檔案
    - 從「任務概要」區塊提取任務清單（僅包含任務標題和 checkbox）
+   - 讀取 PRD 文件（從 `implementation.md` 中的「PRD 文件路徑」欄位取得路徑）
    - 讀取 `acceptance.feature` 檔案以了解驗收標準和大局觀點
-   - 從 `implementation.md` 的「PRD 參考」章節讀取來源文件：
-     - 若有 PRD 文件路徑，讀取 PRD 文件
-     - 若有相關研究文件路徑，讀取研究文件
-     - 可能兩者都有，或只有其中一個
+   - 若 PRD 中引用了研究文件，一併讀取相關研究文件以獲得完整背景資訊
    - 使用 TodoWrite 工具將任務清單轉換為內部任務格式
    - 使用任務標題作為唯一識別方式（不使用編號）
 
@@ -215,19 +199,57 @@ Claude Code 提供內建的 TodoWrite 工具來管理任務，這與 Cursor 等�
    - 執行任務過程中，遇到方向調整、技術障礙、關鍵決策、後續依賴時，**立即**記錄到「實作備註」區塊
    - 使用結構化標籤：`[方向調整]`、`[技術障礙]`、`[技術決策]`、`[後續依賴]`
    - 任務完成後，檢查實作備註是否完整，照預期完成的任務標註「照預期開發」
-   - 參考[實作備註指引](references/implementation-notes-guide.md)確保記錄品質
+   - 參考「實作備註品質檢查清單」確保記錄品質
 
 7. **驗收測試任務處理：**
    - 檢測任務標題或描述中包含以下關鍵詞的任務：
      - 「驗收測試」、「acceptance testing」、「驗收」、「validate implementation」
      - 「執行驗收測試」、「進行驗收」、「驗證實作」等相關詞彙
-   - 當遇到驗收測試任務時，使用 Skill tool 調用 `acceptance-test` skill
-   - 調用方式：`skill: "acceptance-test"`
-   - acceptance-test skill 會自動讀取 implementation.md、acceptance.feature 和背景文件（PRD 或 research）並執行驗收測試
-   - 驗收測試由 acceptance-test skill 專門處理，不要在當前 skill 中直接執行測試邏輯
+   - 當遇到驗收測試任務時，必須使用 Task tool 啟用 acceptance-tester agent
+   - Task tool 的 prompt 參數必須包含以下三個文件的相對路徑（基於專案根目錄）：
+     - `docs/specs/[專案目錄]/implementation.md`
+     - `docs/specs/[專案目錄]/acceptance.feature`
+     - `docs/specs/[專案目錄]/prd.md`
+   - 範例 prompt 格式：
+     ```
+     請讀取 acceptance.feature 檔案、implementation.md 檔案和 prd.md 檔案，並執行所有 Gherkin 場景。
+
+     檔案路徑：
+     - implementation.md: docs/specs/2025-09-19-example-feature/implementation.md
+     - acceptance.feature: docs/specs/2025-09-19-example-feature/acceptance.feature
+     - prd.md: docs/specs/2025-09-19-example-feature/prd.md
+     ```
+   - 驗收測試任務應由 acceptance-tester agent 專門處理，不要在主對話中直接執行
 
 8. **工作流程：**
    - 檢查下一個待處理任務，識別是否為驗收測試任務
-   - 將任務標記為 `in_progress`（驗收測試任務調用 acceptance-test skill）
+   - 將任務標記為 `in_progress`（驗收測試任務啟用專門 agent）
    - 完成後標記為 `completed` 並同步更新 `implementation.md`
    - 等待用戶核准後再進行下一個任務
+
+## 實作備註品質檢查清單
+
+為確保實作備註的品質和一致性，請遵循以下檢查清單：
+
+| 情況 | ✅ 良好範例 | ❌ 避免範例 |
+|------|-----------|-----------|
+| 按預期完成 | 「照預期開發」 | 列出所有實作細節（這些應該在任務敘述中） |
+| 方向調整 | `[方向調整] 原用 X 但因 Y 不可行改用 Z，驗證後確認可行` | `改用了另一個方法` |
+| 技術障礙 | `[技術障礙] X 限制導致 Y 問題，使用 Z 繞過，測試通過` | `遇到一些問題但解決了` |
+| 關鍵決策 | `[技術決策] 比較 X 和 Y，選擇 Y 因 Z 考量，權衡是 W` | `決定用 Y` |
+| 後續依賴 | `[後續依賴] 新增全域 config，後續任務需引入此檔案` | `做了一些修改` |
+
+**記錄原則**：
+- ✅ **需要記錄**：
+  - 原任務敘述中提到的方法行不通，改用其他方法
+  - 發現設計錯誤，需要修改先前的實作
+  - 遇到預期外的技術限制（如 API 不支援、效能問題）
+  - 與使用者討論超過 3 輪才確定的技術方案
+  - 需要告知後續任務的重要資訊（如「必須先完成 X 才能做 Y」）
+
+- ❌ **不需記錄**：
+  - 按照任務敘述直接實作完成
+  - 正常的除錯過程（如修正小的語法錯誤、typo）
+  - 任務敘述中已經提到的實作細節
+  - 常規的技術選擇（如選擇已知的資料結構、設計模式）
+
